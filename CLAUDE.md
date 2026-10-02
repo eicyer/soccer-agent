@@ -8,7 +8,7 @@ Core rule of the design: the LLM never predicts points. Numbers come from models
 
 - Small and meaningful: one logical change per commit. If the message needs "and", split it.
 - Concise subject in the imperative, under 60 characters, no trailing full stop ("Add FPL snapshotter"). Add a body only to explain why.
-- The author is always Emir's GitHub account: `Emir Icyer <124095333+eicyer@users.noreply.github.com>`. It is set in this repo's git config; never override it with `--author` or another identity.
+- The author is always Emir's GitHub account: `Emir Icyer <124095333+eicyer@users.noreply.github.com>`. It is set in this repo's git config; never override it with `--author` or another identity. No `Co-Authored-By` trailers, including for Claude.
 - Every commit leaves the repo working: code runs, tests pass.
 - Commit or push only when asked. Never force-push `main` or rewrite pushed history.
 
