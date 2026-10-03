@@ -17,7 +17,7 @@ def test_injured_player_recovers_over_the_horizon(real_game: Game) -> None:
     injured = next(
         p
         for p in real_game.players.values()
-        if p.status == "i" and p.chance_of_playing_next_round == 0 and p.total_points > 10
+        if p.fpl_status == "i" and p.chance_of_playing_next_round == 0 and p.total_points > 10
     )
     xp = fpl_xp(real_game, HORIZON)[injured.id]
     assert xp[6] == 0
@@ -45,3 +45,11 @@ def test_blank_scores_zero_and_double_scores_more(real_game: Game) -> None:
 def test_horizon_must_start_at_next_gameweek(real_game: Game) -> None:
     with pytest.raises(ValueError):
         fpl_xp(real_game, [7, 8])
+
+
+@pytest.mark.parametrize("fpl_status", ["u", "n"])
+def test_players_who_left_never_come_back(real_game: Game, fpl_status: str) -> None:
+    scorer = max(real_game.players.values(), key=lambda p: p.total_points)
+    gone = replace(scorer, fpl_status=fpl_status, chance_of_playing_next_round=None, ep_next=0.0)
+    game = replace(real_game, players={**real_game.players, scorer.id: gone})
+    assert all(points == 0 for points in fpl_xp(game, HORIZON)[scorer.id].values())

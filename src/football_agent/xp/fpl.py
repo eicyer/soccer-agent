@@ -12,8 +12,11 @@ from football_agent.data.model import Fixture, Game, Player
 # FPL difficulty rating (1 easy to 5 hard) to a points multiplier.
 DIFFICULTY_MULTIPLIER = {1: 1.2, 2: 1.1, 3: 1.0, 4: 0.9, 5: 0.8}
 
-# How much an unavailable player's chance of playing recovers per Gameweek.
+# How much an injured, doubtful or suspended player's fitness recovers per Gameweek.
 RECOVERY_PER_GAMEWEEK = 0.25
+
+# FPL codes for players who have left the club or the league: they don't come back.
+GONE = {"u", "n"}
 
 XP = dict[int, dict[int, float]]  # player id -> Gameweek id -> xP
 
@@ -22,9 +25,12 @@ def _difficulty(fixture: Fixture, team_id: int) -> int:
     return fixture.home_difficulty if fixture.home_team_id == team_id else fixture.away_difficulty
 
 
-def _availability(player: Player, weeks_ahead: int) -> float:
-    """Chance a player is available, `weeks_ahead` Gameweeks after the next one."""
-    if player.status == "a":
+def _fitness(player: Player, weeks_ahead: int) -> float:
+    """Share of his usual points a player is expected to deliver, `weeks_ahead` Gameweeks
+    after the next one, from FPL's own flags."""
+    if player.fpl_status in GONE:
+        return 0.0
+    if player.fpl_status == "a":
         return 1.0
     now = (player.chance_of_playing_next_round or 0) / 100
     return min(1.0, now + RECOVERY_PER_GAMEWEEK * weeks_ahead)
@@ -45,6 +51,6 @@ def fpl_xp(game: Game, gameweek_ids: list[int]) -> XP:
             fixture_factor = sum(
                 DIFFICULTY_MULTIPLIER[_difficulty(f, player.team_id)] for f in fixtures
             )
-            by_gameweek[gw_id] = per_gameweek * fixture_factor * _availability(player, weeks_ahead)
+            by_gameweek[gw_id] = per_gameweek * fixture_factor * _fitness(player, weeks_ahead)
         xp[player.id] = by_gameweek
     return xp

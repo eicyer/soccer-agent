@@ -37,7 +37,9 @@ class Player:
     team_id: int
     position_id: int
     price: int  # tenths of a million
-    status: str  # a available, d doubtful, i injured, s suspended, u unavailable, n not in squad
+    # FPL's own code, not the Scout's Player Status: a available, d doubtful, i injured,
+    # s suspended, u unavailable (usually left the club), n not in the league
+    fpl_status: str
     chance_of_playing_next_round: int | None  # FPL's own flag, 0-100, None when no concern
     ep_next: float  # FPL's published xP for the next Gameweek
     points_per_game: float
@@ -144,7 +146,7 @@ def load_game(snapshot_dir: Path) -> Game:
             team_id=e["team"],
             position_id=e["element_type"],
             price=e["now_cost"],
-            status=e["status"],
+            fpl_status=e["status"],
             chance_of_playing_next_round=e["chance_of_playing_next_round"],
             ep_next=float(e["ep_next"] or 0),
             points_per_game=float(e["points_per_game"] or 0),

@@ -12,7 +12,11 @@ def cheapest_legal_squad(game: Game) -> list[int]:
     teams: Counter[int] = Counter()
     for position in game.rules.positions.values():
         candidates = sorted(
-            (p for p in game.players.values() if p.position_id == position.id and p.status == "a"),
+            (
+                p
+                for p in game.players.values()
+                if p.position_id == position.id and p.fpl_status == "a"
+            ),
             key=lambda p: (p.price, p.id),
         )
         picked = 0
