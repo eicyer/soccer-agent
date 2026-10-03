@@ -112,7 +112,8 @@ def _parse_time(value: str) -> datetime:
 def load_game(snapshot_dir: Path) -> Game:
     bootstrap = read_json(snapshot_dir, "bootstrap-static")
     fixtures = read_json(snapshot_dir, "fixtures")
-    assert isinstance(bootstrap, dict) and isinstance(fixtures, list)
+    if not isinstance(bootstrap, dict) or not isinstance(fixtures, list):
+        raise ValueError(f"{snapshot_dir} doesn't look like an FPL Snapshot")
     settings = bootstrap["game_settings"]
 
     positions = {
