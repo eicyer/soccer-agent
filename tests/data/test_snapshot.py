@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -7,7 +7,6 @@ import pytest
 from football_agent.data.snapshot import (
     latest_snapshot,
     read_json,
-    snapshot_dates,
     take_snapshot,
 )
 
@@ -51,17 +50,12 @@ def test_failure_leaves_no_complete_snapshot(tmp_path: Path) -> None:
 
     with pytest.raises(json.JSONDecodeError):
         take_snapshot(tmp_path, fetch, NOW)
-    assert snapshot_dates(tmp_path) == set()
+    assert not any(p.is_dir() and not p.name.startswith(".") for p in tmp_path.iterdir())
 
 
-def test_snapshot_dates_and_latest(tmp_path: Path) -> None:
+def test_latest_ignores_partial_snapshots(tmp_path: Path) -> None:
     for stamp in ["2026-10-01T090000Z", "2026-10-02T090000Z"]:
         (tmp_path / stamp).mkdir()
     (tmp_path / ".2026-10-03T090000Z.partial").mkdir()
 
-    assert snapshot_dates(tmp_path) == {date(2026, 10, 1), date(2026, 10, 2)}
     assert latest_snapshot(tmp_path).name == "2026-10-02T090000Z"
-
-
-def test_snapshot_dates_of_missing_root_is_empty(tmp_path: Path) -> None:
-    assert snapshot_dates(tmp_path / "nope") == set()

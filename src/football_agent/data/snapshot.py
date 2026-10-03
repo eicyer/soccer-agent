@@ -11,7 +11,7 @@ import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 API_BASE = "https://fantasy.premierleague.com/api/"
@@ -68,19 +68,6 @@ def take_snapshot(root: Path, fetch: Fetch = fetch_api, now: datetime | None = N
 
     partial.rename(out_dir)
     return out_dir
-
-
-def snapshot_dates(root: Path) -> set[date]:
-    """UTC dates on which a complete Snapshot exists under root."""
-    if not root.exists():
-        return set()
-    dates = set()
-    for child in root.iterdir():
-        try:
-            dates.add(datetime.strptime(child.name, STAMP_FORMAT).date())
-        except ValueError:
-            continue
-    return dates
 
 
 def latest_snapshot(root: Path) -> Path:
