@@ -40,7 +40,7 @@ def test_new_team_plans_are_legal_across_the_horizon(real_game: Game, new_team_p
 def test_plans_are_ranked_and_distinct(new_team_plans) -> None:
     plans = new_team_plans.plans
     assert len(plans) == 3
-    assert plans[0].xp >= plans[1].xp >= plans[2].xp
+    assert plans[0].objective >= plans[1].objective >= plans[2].objective
     assert len({(p.first.squad, p.first.captain) for p in plans}) == 3
 
 

@@ -4,7 +4,7 @@ See docs/design/02-solver-and-xp.md. Not yet modelled: Chips (the Chip Schedule 
 with the Planner) and Constraints from agents or Instructions.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import pulp
 
@@ -28,11 +28,13 @@ class SolverSettings:
 @dataclass(frozen=True)
 class CandidatePlans:
     plans: list[Plan]
-    excluded: list[str] = field(default_factory=list)
 
     @property
     def is_close_call(self) -> bool:
-        return len(self.plans) > 1 and self.plans[0].xp - self.plans[1].xp <= CLOSE_CALL_XP
+        return (
+            len(self.plans) > 1
+            and self.plans[0].objective - self.plans[1].objective <= CLOSE_CALL_XP
+        )
 
 
 class Infeasible(Exception):

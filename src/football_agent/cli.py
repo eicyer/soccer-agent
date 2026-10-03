@@ -46,8 +46,8 @@ def _pick_squad(args: argparse.Namespace) -> int:
     print(f"Snapshot {snapshot_dir.name} · xP from FPL · Gameweeks {horizon[0]}–{horizon[-1]}\n")
     print(squad_entry_report(game, best, {pid: xp[pid][first] for pid in best.squad}))
     if candidates.is_close_call:
-        gap = candidates.plans[0].xp - candidates.plans[1].xp
-        print(f"\nClose Call: the next-best Plan is {gap:.2f} xP behind over the horizon.")
+        gap = candidates.plans[0].objective - candidates.plans[1].objective
+        print(f"\nClose Call: the next-best Plan scores {gap:.2f} less over the horizon.")
 
     record = write_decision(
         args.decisions,

@@ -52,7 +52,9 @@ class Plan:
     """Moves for every Gameweek in the Planning Horizon. Only the first is executed."""
 
     gameweeks: tuple[GameweekMoves, ...]
-    xp: float  # the Solver's objective: discounted xP over the horizon, net of Points Hits
+    objective: (
+        float  # what the Solver maximised: discounted xP over the horizon, net of Points Hits
+    )
 
     @property
     def first(self) -> GameweekMoves:
