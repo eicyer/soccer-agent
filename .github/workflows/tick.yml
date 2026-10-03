@@ -1,0 +1,70 @@
+# The single scheduler (docs/design/08-infrastructure.md). For now it only takes
+# the daily Snapshot; later milestones add Chat, Gameweek runs and the run registry.
+name: Tick
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: tick
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SNAPSHOT_REPO: eicyer/fpl-snapshots
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check for today's Snapshot
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          today=$(date -u +%Y-%m-%d)
+          if gh api "repos/$SNAPSHOT_REPO/contents/raw" --jq '.[].name' 2>/dev/null | grep -q "^$today"; then
+            echo "Snapshot for $today exists; nothing to do."
+            echo "due=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "due=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.check.outputs.due == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.check.outputs.due == 'true'
+        uses: astral-sh/setup-uv@v6
+
+      - name: Take Snapshot
+        if: steps.check.outputs.due == 'true'
+        run: uv run --locked football-agent snapshot --out "$RUNNER_TEMP/raw"
+
+      - name: Push Snapshot
+        if: steps.check.outputs.due == 'true'
+        env:
+          DEPLOY_KEY: ${{ secrets.SNAPSHOT_DEPLOY_KEY }}
+        run: |
+          key="$RUNNER_TEMP/deploy_key"
+          install -m 600 /dev/null "$key"
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+          # Shallow, blobless, sparse clone: the repo grows daily, but we only add to it.
+          git clone --depth 1 --filter=blob:none --sparse "git@github.com:$SNAPSHOT_REPO.git" "$RUNNER_TEMP/snapshots"
+          cd "$RUNNER_TEMP/snapshots"
+          mkdir -p raw
+          cp -R "$RUNNER_TEMP"/raw/* raw/
+          stamp=$(ls "$RUNNER_TEMP/raw")
+          git sparse-checkout add "raw/$stamp"
+          git add "raw/$stamp"
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Add Snapshot $stamp"
+          git push -q origin HEAD
+          rm -f "$key"
