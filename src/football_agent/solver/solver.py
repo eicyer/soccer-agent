@@ -39,6 +39,10 @@ class Infeasible(Exception):
     pass
 
 
+class NotProvenOptimal(Exception):
+    """The time limit ended the solve before optimality was proven."""
+
+
 def candidate_plans(
     game: Game,
     state: TeamState,
@@ -90,6 +94,9 @@ class _Model:
             "free", weeks, lowBound=0, upBound=rules.max_free_transfers, cat="Integer"
         )
         self.bank = pulp.LpVariable.dicts("bank", weeks, lowBound=0)
+        # 1 when a Gameweek uses more transfers than it has free (whether or not a hit is due).
+        self.over = pulp.LpVariable.dicts("over", weeks, cat="Binary")
+        big = rules.squad_size + rules.max_free_transfers
         p = self.problem
 
         def buy_price(pid: int) -> int:
@@ -105,6 +112,7 @@ class _Model:
             for pid in ids:
                 was_in = self.squad[pid][previous] if previous else (1 if pid in state.squad else 0)
                 p += self.squad[pid][week] == was_in + self.buy[pid][week] - self.sell[pid][week]
+                p += self.buy[pid][week] + self.sell[pid][week] <= 1
                 p += self.start[pid][week] <= self.squad[pid][week]
                 p += self.captain[pid][week] <= self.start[pid][week]
 
@@ -138,21 +146,28 @@ class _Model:
                 if week == first:
                     p += free_now == state.free_transfers
                 p += self.hits[week] >= transfers - free_now
+                p += self.hits[week] <= big * self.over[week]
+                p += transfers - free_now <= big * self.over[week]
             if i + 1 < len(weeks):
                 after = self.free[weeks[i + 1]]
                 if week == first and state.is_new:
                     p += after == 1
                 else:
                     # Unused free transfers roll over, one more each Gameweek, up to the cap.
-                    p += after <= self.free[week] - transfers + self.hits[week] + 1
+                    # Going over (paying hits) leaves exactly one for next time; a hit never
+                    # buys extra free transfers.
+                    p += after <= self.free[week] - transfers + 1 + big * self.over[week]
+                    p += after <= 1 + big * (1 - self.over[week])
                     p += after >= 1
 
-        # Can't sell what you don't own or buy what you already have.
+        # Can't sell what you don't own. Players owned now are never bought within the
+        # horizon either: buying one back after selling would reset its selling price.
         for pid in ids:
             if pid not in state.squad:
                 p += self.sell[pid][first] == 0
             else:
-                p += self.buy[pid][first] == 0
+                for week in weeks:
+                    p += self.buy[pid][week] == 0
 
         objective = []
         for i, week in enumerate(weeks):
@@ -178,10 +193,16 @@ class _Model:
         p += pulp.lpSum([*chosen, self.captain[moves.captain][week]]) <= len(chosen)
 
     def solve(self) -> Plan | None:
-        status = self.problem.solve(pulp.HiGHS(msg=False, timeLimit=self.settings.time_limit))
-        if pulp.LpStatus[status] != "Optimal":
+        self.problem.solve(pulp.HiGHS(msg=False, timeLimit=self.settings.time_limit))
+        # PuLP reports a time-limited solve as "Optimal"; the solution status tells the truth.
+        if self.problem.sol_status == pulp.LpSolutionOptimal:
+            return self._read_plan()
+        if pulp.LpStatus[self.problem.status] == "Infeasible":
             return None
-        return self._read_plan()
+        raise NotProvenOptimal(
+            f"solver stopped after {self.settings.time_limit}s without proving optimality "
+            f"(status {pulp.LpStatus[self.problem.status]}, solution {self.problem.sol_status})"
+        )
 
     def _read_plan(self) -> Plan:
         rules = self.game.rules
