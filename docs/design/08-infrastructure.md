@@ -38,6 +38,8 @@ A single GitHub Actions workflow runs every 15 minutes (the **tick**). Each tick
 3. Takes the daily Snapshot when one is due.
 4. Exits within seconds when there's nothing to do.
 
+Each tick is split into jobs so that secrets never share a job with repository code ([decision 0005](../decisions/0005-secrets-never-share-a-job-with-repo-code.md)). Today: `check` asks the GitHub API whether today's Snapshot exists (failing closed on any API error), `snapshot` runs our code with no secrets, and `publish` holds the deploy key in a `main`-only environment and only runs git. A manual run can force a Snapshot.
+
 Runs are recorded in Postgres with their Gameweek and type, so a delayed or repeated tick never starts the same run twice. GitHub may start scheduled jobs late under load; the Final Run's 2-hour margin covers that, and the failure rules in [01](01-gameweek-pipeline.md) cover the rest.
 
 A manual trigger (`workflow_dispatch`) can start any run for testing or recovery.
