@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "An autonomous Fantasy Premier League manager built from a solver and open-weight LLM agents."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "highspy>=1.15.1",
+    "pulp>=3,<4",
+]
 
 [project.scripts]
 football-agent = "football_agent.cli:main"
@@ -21,6 +24,8 @@ packages = ["src/football_agent"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# PuLP 3.3 warns about its 4.0 API, which we deliberately don't use yet.
+filterwarnings = ["ignore:.*PuLP 4.0 compatibility:DeprecationWarning"]
 
 [tool.ruff]
 line-length = 100
