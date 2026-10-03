@@ -58,6 +58,32 @@ class Plan:
         return self.gameweeks[0]
 
 
+def advance(game: Game, state: TeamState, moves: GameweekMoves) -> TeamState:
+    """The team state after a Gameweek's moves, ready for the next Gameweek.
+
+    Prices are held at today's values across the horizon; Free Hit's squad reversion
+    isn't modelled yet (chips arrive with the Chip Schedule).
+    """
+    rules = game.rules
+    proceeds = sum(
+        selling_price(game.players[p], state.squad[p], rules.sell_on_fee)
+        for p in moves.transfers_out
+    )
+    cost = sum(game.players[p].price for p in moves.transfers_in)
+    squad = {p: price for p, price in state.squad.items() if p not in moves.transfers_out}
+    squad.update({p: game.players[p].price for p in moves.transfers_in})
+
+    # Wildcard and Free Hit transfers don't use free transfers.
+    used = 0 if moves.chip in ("wildcard", "freehit") else len(moves.transfers_in)
+    if state.is_new:
+        free = 1
+    else:
+        # Unused free transfers roll over, one more each Gameweek, up to the cap.
+        free = min(rules.max_free_transfers, max(0, state.free_transfers - used) + 1)
+    chips = state.chips_available - {moves.chip} if moves.chip else state.chips_available
+    return TeamState(squad, state.bank + proceeds - cost, free, chips)
+
+
 def selling_price(player: Player, purchase_price: int, sell_on_fee: float) -> int:
     """FPL keeps a share of any rise (rounded down) and passes on every fall."""
     if player.price <= purchase_price:

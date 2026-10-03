@@ -6,23 +6,47 @@ Returns every rule broken, in words, so a failure explains itself in logs and Me
 from collections import Counter
 
 from football_agent.data.model import Game
-from football_agent.solver.plan import GameweekMoves, TeamState, selling_price
+from football_agent.solver.plan import GameweekMoves, Plan, TeamState, advance, selling_price
 
 FREE_TRANSFER_CHIPS = {"wildcard", "freehit"}
 
 
-def rule_check(game: Game, state: TeamState, moves: GameweekMoves) -> list[str]:
+def check_plan(game: Game, state: TeamState, plan: Plan) -> list[str]:
+    """Rule Check every Gameweek of a Plan, carrying the team state forward."""
+    violations: list[str] = []
+    expected = game.next_gameweek.id
+    for moves in plan.gameweeks:
+        broken = rule_check(game, state, moves, gameweek_id=expected)
+        violations += [f"Gameweek {moves.gameweek_id}: {v}" for v in broken]
+        if broken:
+            break  # later Gameweeks build on an illegal state; their errors would be noise
+        state = advance(game, state, moves)
+        expected += 1
+    return violations
+
+
+def rule_check(
+    game: Game, state: TeamState, moves: GameweekMoves, gameweek_id: int | None = None
+) -> list[str]:
+    """Check one Gameweek's moves; by default they must be for the next Gameweek."""
     rules = game.rules
     violations: list[str] = []
 
-    if moves.gameweek_id != game.next_gameweek.id:
-        violations.append(f"moves are for Gameweek {moves.gameweek_id}, not the next one")
+    expected_gameweek = gameweek_id if gameweek_id is not None else game.next_gameweek.id
+    if moves.gameweek_id != expected_gameweek:
+        violations.append(
+            f"moves are for Gameweek {moves.gameweek_id}, not Gameweek {expected_gameweek}"
+        )
+    if not 0 <= state.free_transfers <= rules.max_free_transfers:
+        violations.append(f"{state.free_transfers} free transfers is outside the rules")
 
-    unknown = [
-        p for p in (*moves.starting, *moves.bench, *moves.transfers_in) if p not in game.players
-    ]
+    named = (*moves.starting, *moves.bench, *moves.transfers_in, *moves.transfers_out)
+    unknown = [p for p in named if p not in game.players]
     if unknown:
         return [*violations, f"unknown players: {unknown}"]
+    for label, ids in (("bought", moves.transfers_in), ("sold", moves.transfers_out)):
+        if len(set(ids)) != len(ids):
+            violations.append(f"a player is {label} twice")
 
     # Transfers must turn the current squad into the Plan's squad.
     if set(moves.transfers_out) - set(state.squad):
@@ -86,6 +110,8 @@ def rule_check(game: Game, state: TeamState, moves: GameweekMoves) -> list[str]:
     # Chips and Points Hits.
     if moves.chip is not None and moves.chip not in state.chips_available:
         violations.append(f"chip {moves.chip} isn't available")
+    if state.is_new and moves.chip in FREE_TRANSFER_CHIPS:
+        violations.append(f"a new team can't play {moves.chip}")
     if state.is_new or moves.chip in FREE_TRANSFER_CHIPS:
         due_hits = 0
     else:

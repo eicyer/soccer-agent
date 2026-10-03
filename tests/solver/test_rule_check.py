@@ -3,7 +3,7 @@ from dataclasses import replace
 import pytest
 
 from football_agent.data.model import Game
-from football_agent.solver.plan import TeamState, selling_price
+from football_agent.solver.plan import TeamState, advance, selling_price
 from football_agent.solver.rule_check import rule_check
 
 from .helpers import cheapest_legal_squad, moves_for
@@ -143,3 +143,35 @@ def test_selling_price_keeps_half_of_a_rise_rounded_down(real_game: Game) -> Non
     player = replace(real_game.players[1], price=63)
     assert selling_price(player, 60, 0.5) == 61
     assert selling_price(replace(player, price=58), 60, 0.5) == 58
+
+
+def test_rejects_duplicate_and_unknown_transfers(real_game: Game, squad: list[int]) -> None:
+    state = existing_team(real_game, squad, free_transfers=2)
+    twice = moves_for(real_game, squad, transfers_in=(), transfers_out=(squad[0], squad[0]))
+    assert any("sold twice" in v for v in rule_check(real_game, state, twice))
+    unknown = moves_for(real_game, squad, transfers_in=(), transfers_out=(999_999,))
+    assert any("unknown" in v for v in rule_check(real_game, state, unknown))
+
+
+def test_rejects_impossible_free_transfers(real_game: Game, squad: list[int]) -> None:
+    state = existing_team(real_game, squad, free_transfers=6)
+    moves = moves_for(real_game, squad, transfers_in=())
+    assert any("free transfers" in v for v in rule_check(real_game, state, moves))
+
+
+def test_new_team_cant_play_wildcard(real_game: Game, squad: list[int]) -> None:
+    moves = moves_for(real_game, squad, chip="wildcard")
+    violations = rule_check(real_game, TeamState.new(real_game), moves)
+    assert any("new team" in v for v in violations)
+
+
+def test_advance_rolls_free_transfers_over_up_to_the_cap(real_game: Game, squad: list[int]) -> None:
+    state = existing_team(real_game, squad, free_transfers=4)
+    no_moves = moves_for(real_game, squad, transfers_in=())
+    after = advance(real_game, state, no_moves)
+    assert after.free_transfers == 5
+    assert advance(real_game, after, no_moves).free_transfers == 5
+    assert (
+        advance(real_game, TeamState.new(real_game), moves_for(real_game, squad)).free_transfers
+        == 1
+    )
