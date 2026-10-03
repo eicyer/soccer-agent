@@ -10,7 +10,7 @@ from football_agent.data.snapshot import latest_snapshot, snapshot_dates, take_s
 from football_agent.decision_record import write_decision
 from football_agent.report import squad_entry_report
 from football_agent.solver.plan import TeamState
-from football_agent.solver.rule_check import rule_check
+from football_agent.solver.rule_check import check_plan
 from football_agent.solver.solver import candidate_plans
 from football_agent.xp.fpl import fpl_xp
 
@@ -37,7 +37,7 @@ def _pick_squad(args: argparse.Namespace) -> int:
 
     candidates = candidate_plans(game, state, xp, horizon, k=args.k)
     best = candidates.plans[0].first
-    violations = rule_check(game, state, best)
+    violations = check_plan(game, state, candidates.plans[0])
     if violations:
         # The Solver and the Rule Check disagree: a bug. Never print a squad to enter.
         print("Rule Check failed:", *violations, sep="\n  ", file=sys.stderr)
