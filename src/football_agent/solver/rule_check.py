@@ -6,9 +6,14 @@ Returns every rule broken, in words, so a failure explains itself in logs and Me
 from collections import Counter
 
 from football_agent.data.model import Game
-from football_agent.solver.plan import GameweekMoves, Plan, TeamState, advance, selling_price
-
-FREE_TRANSFER_CHIPS = {"wildcard", "freehit"}
+from football_agent.solver.plan import (
+    FREE_TRANSFER_CHIPS,
+    GameweekMoves,
+    Plan,
+    TeamState,
+    advance,
+    selling_price,
+)
 
 
 def check_plan(game: Game, state: TeamState, plan: Plan) -> list[str]:
@@ -98,8 +103,7 @@ def rule_check(
                 f"{starting[position.id]} {position.code} starting; "
                 f"must be {position.min_start} to {position.max_start}"
             )
-    goalkeeper = next(p.id for p in rules.positions.values() if p.code == "GKP")
-    if moves.bench and game.players[moves.bench[0]].position_id != goalkeeper:
+    if moves.bench and game.players[moves.bench[0]].position_id != rules.goalkeeper_id:
         violations.append("the bench must list the goalkeeper first")
 
     if moves.captain not in moves.starting:

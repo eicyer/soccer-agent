@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from football_agent.data.model import Game, Player
 
 CHIPS = ("wildcard", "freehit", "bboost", "3xc")
+FREE_TRANSFER_CHIPS = frozenset({"wildcard", "freehit"})  # their transfers are free
 
 
 @dataclass(frozen=True)
@@ -73,8 +74,7 @@ def advance(game: Game, state: TeamState, moves: GameweekMoves) -> TeamState:
     squad = {p: price for p, price in state.squad.items() if p not in moves.transfers_out}
     squad.update({p: game.players[p].price for p in moves.transfers_in})
 
-    # Wildcard and Free Hit transfers don't use free transfers.
-    used = 0 if moves.chip in ("wildcard", "freehit") else len(moves.transfers_in)
+    used = 0 if moves.chip in FREE_TRANSFER_CHIPS else len(moves.transfers_in)
     if state.is_new:
         free = 1
     else:

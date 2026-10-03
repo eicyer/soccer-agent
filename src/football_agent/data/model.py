@@ -78,6 +78,10 @@ class Rules:
     points_hit_cost: int
     positions: dict[int, Position]
 
+    @property
+    def goalkeeper_id(self) -> int:
+        return next(p.id for p in self.positions.values() if p.code == "GKP")
+
 
 @dataclass(frozen=True)
 class Game:

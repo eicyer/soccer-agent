@@ -217,9 +217,10 @@ class _Model:
             captain = next(pl for pl in starting if on(self.captain[pl.id]))
             points = {pl.id: self.xp[pl.id].get(week, 0.0) for pl in squad}
             vice = max((pl for pl in starting if pl.id != captain.id), key=lambda pl: points[pl.id])
-            goalkeeper = next(pos.id for pos in rules.positions.values() if pos.code == "GKP")
             benched = [pl for pl in squad if pl not in starting]
-            bench = sorted(benched, key=lambda pl: (pl.position_id != goalkeeper, -points[pl.id]))
+            bench = sorted(
+                benched, key=lambda pl: (pl.position_id != rules.goalkeeper_id, -points[pl.id])
+            )
             gameweeks.append(
                 GameweekMoves(
                     gameweek_id=week,
