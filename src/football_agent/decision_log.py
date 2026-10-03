@@ -1,7 +1,7 @@
-"""Decision records: what was decided, from what, and when, written before the deadline.
+"""The decision log: what was decided, from what, and when, written before the deadline.
 
 Live, timestamped decisions are the only honest evidence for evals (docs/design/06-evaluation.md).
-Until Postgres arrives (M2) they are JSON files; they'll be imported into the decision log.
+Until Postgres arrives (M2) each entry is a JSON file, to be imported into the Postgres log.
 """
 
 import json

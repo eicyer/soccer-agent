@@ -7,7 +7,7 @@ from pathlib import Path
 
 from football_agent.data.model import load_game
 from football_agent.data.snapshot import latest_snapshot, snapshot_dates, take_snapshot
-from football_agent.decision_record import write_decision
+from football_agent.decision_log import write_decision
 from football_agent.report import squad_entry_report
 from football_agent.solver.plan import TeamState
 from football_agent.solver.rule_check import check_plan
@@ -59,7 +59,7 @@ def _pick_squad(args: argparse.Namespace) -> int:
         chosen=0,
         decided_by="solver",
     )
-    print(f"\nDecision record: {record}")
+    print(f"\nDecision log entry: {record}")
     return 0
 
 
