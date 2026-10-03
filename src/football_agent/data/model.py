@@ -41,6 +41,7 @@ class Player:
     chance_of_playing_next_round: int | None  # FPL's own flag, 0-100, None when no concern
     ep_next: float  # FPL's published xP for the next Gameweek
     points_per_game: float
+    total_points: int
     minutes: int
 
 
@@ -147,6 +148,7 @@ def load_game(snapshot_dir: Path) -> Game:
             chance_of_playing_next_round=e["chance_of_playing_next_round"],
             ep_next=float(e["ep_next"] or 0),
             points_per_game=float(e["points_per_game"] or 0),
+            total_points=e["total_points"],
             minutes=e["minutes"],
         )
         for e in bootstrap["elements"]
